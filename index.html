@@ -1,59 +1,468 @@
 <!DOCTYPE html>
-<html>
+<html dir="rtl" lang="ar">
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مشغل الفيديو</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f0f0;
+        }
 
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+        .app-bar {
+            background-color: #6200ee;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
 
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
-  <base href="/">
+        .menu-button {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+        }
 
-  <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+        .drawer {
+            position: fixed;
+            top: 0;
+            right: -280px;
+            width: 280px;
+            height: 100vh;
+            background-color: white;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
 
-  <!-- iOS meta tags & icons -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="play_video">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+        .drawer.open {
+            transform: translateX(-280px);
+        }
 
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+        .drawer-header {
+            background-color: #6200ee;
+            color: white;
+            padding: 2rem 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
 
-  <title>play_video</title>
-  <link rel="manifest" href="manifest.json">
+        .drawer-header-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background-color: #fff;
+            margin-bottom: 1rem;
+        }
 
-  <script>
-    // The value below is injected by flutter build, do not touch.
-    const serviceWorkerVersion = "1947967282";
-  </script>
-  <!-- This script adds the flutter initialization JS code -->
-  <script src="flutter.js" defer></script>
+        .drawer-content {
+            padding: 1rem 0;
+        }
+
+        .drawer-item {
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            text-decoration: none;
+            color: #333;
+            transition: background-color 0.2s;
+        }
+
+        .drawer-item:hover {
+            background-color: #f0f0f0;
+        }
+
+        .drawer-item i {
+            width: 24px;
+            text-align: center;
+        }
+
+        .drawer-divider {
+            height: 1px;
+            background-color: #ddd;
+            margin: 0.5rem 0;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0,0,0,0.5);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s;
+            z-index: 999;
+        }
+
+        .overlay.open {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .grid-container {
+            padding: 1rem;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr); /* فيديوهين في كل صف */
+            gap: 1rem;
+            max-width: 800px; /* تعديل العرض */
+            margin: 0 auto;
+        }
+
+        .video-item {
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            background-color: #ddd;
+            aspect-ratio: 16/9;
+            cursor: pointer;
+        }
+
+        .video-thumbnail {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .video-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0,0,0,0.7));
+            padding: 1rem;
+        }
+
+        .video-title {
+            color: white;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .play-button {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0,0,0,0.5);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .play-button i {
+            color: white;
+            font-size: 24px;
+        }
+
+        .video-player-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0,0,0,0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .video-player-content {
+            width: 100%;
+            max-width: 800px;
+            position: relative;
+        }
+
+        .video-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(0,0,0,0.5);
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            transition: opacity 0.5s;
+        }
+
+        .time-controls {
+            display: flex;
+            justify-content: space-between;
+            color: white;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background-color: rgba(255,255,255,0.3);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .progress {
+            height: 100%;
+            background-color: #6200ee;
+            width: 0;
+        }
+
+        .control-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .control-button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+
+        .close-button {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-  <script>
-    window.addEventListener('load', function(ev) {
-      // Download main.dart.js
-      _flutter.loader.loadEntrypoint({
-        serviceWorker: {
-          serviceWorkerVersion: serviceWorkerVersion,
-        },
-        onEntrypointLoaded: function(engineInitializer) {
-          engineInitializer.initializeEngine().then(function(appRunner) {
-            appRunner.runApp();
-          });
+    <div class="app-bar">
+        <button class="menu-button" onclick="toggleDrawer()">
+            <i class="fas fa-bars"></i>
+        </button>
+        <h1>الرئيسية</h1>
+        <div style="width: 40px"></div>
+    </div>
+
+    <div class="drawer" id="drawer">
+        <div class="drawer-header">
+            <div class="drawer-header-image"></div>
+            <h2>اسم المستخدم</h2>
+            <p>user@example.com</p>
+        </div>
+        <div class="drawer-content">
+            <a href="#" class="drawer-item">
+                <i class="fas fa-home"></i>
+                <span>الرئيسية</span>
+            </a>
+            <a href="#" class="drawer-item">
+                <i class="fas fa-user"></i>
+                <span>الملف الشخصي</span>
+            </a>
+            <a href="#" class="drawer-item">
+                <i class="fas fa-heart"></i>
+                <span>المفضلة</span>
+            </a>
+            <div class="drawer-divider"></div>
+            <a href="#" class="drawer-item">
+                <i class="fas fa-cog"></i>
+                <span>الإعدادات</span>
+            </a>
+            <a href="#" class="drawer-item">
+                <i class="fas fa-bell"></i>
+                <span>الإشعارات</span>
+            </a>
+            <div class="drawer-divider"></div>
+            <a href="#" class="drawer-item">
+                <i class="fas fa-question-circle"></i>
+                <span>المساعدة</span>
+            </a>
+            <a href="#" class="drawer-item">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>تسجيل الخروج</span>
+            </a>
+        </div>
+    </div>
+
+    <div class="overlay" id="overlay" onclick="toggleDrawer()"></div>
+
+    <div class="grid-container" id="videoGrid"></div>
+
+    <div class="video-player-container" id="videoPlayer">
+        <div class="video-player-content">
+            <video id="mainVideo" width="100%"></video>
+            <button class="close-button" onclick="closeVideoPlayer()">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="video-controls" id="videoControls">
+                <div class="control-buttons">
+                    <button class="control-button" onclick="seekBackward()">
+                        <i class="fas fa-backward"></i>
+                    </button>
+                    <button class="control-button" id="playPauseBtn" onclick="togglePlay()">
+                        <i class="fas fa-play"></i>
+                    </button>
+                    <button class="control-button" onclick="seekForward()">
+                        <i class="fas fa-forward"></i>
+                    </button>
+                    <button class="control-button" id="shareBtn" onclick="shareVideo()">
+                        <i class="fas fa-share-alt"></i>
+                    </button>
+                </div>
+                <div class="time-controls">
+                    <span id="currentTime">00:00</span>
+                    <span id="duration">00:00</span>
+                </div>
+                <div class="progress-bar" id="progressBar">
+                    <div class="progress" id="progress"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleDrawer() {
+            const drawer = document.getElementById('drawer');
+            const overlay = document.getElementById('overlay');
+            drawer.classList.toggle('open');
+            overlay.classList.toggle('open');
         }
-      });
-    });
-  </script>
+
+        function generateVideoList() {
+            const videos = [];
+            for (let i = 92; i <= 300; i++) {
+                videos.push(`nsfw_${i}`);
+            }
+            return videos;
+        }
+
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            seconds = Math.floor(seconds % 60);
+            return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        const videos = generateVideoList();
+        const videoGrid = document.getElementById('videoGrid');
+        const videoPlayer = document.getElementById('videoPlayer');
+        const mainVideo = document.getElementById('mainVideo');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const progressBar = document.getElementById('progressBar');
+        const progress = document.getElementById('progress');
+        const currentTimeEl = document.getElementById('currentTime');
+        const durationEl = document.getElementById('duration');
+        const videoControls = document.getElementById('videoControls');
+
+        videos.forEach(video => {
+            const videoUrl = `https://storage.googleapis.com/her_family/SwapHer/templates/${video}.mp4`;
+            const thumbnailUrl = videoUrl.replace('.mp4', '.jpg');
+
+            const videoItem = document.createElement('div');
+            videoItem.className = 'video-item';
+            videoItem.innerHTML = `
+                <img class="video-thumbnail" src="${thumbnailUrl}" alt="${video}">
+                <div class="video-overlay">
+                    <div class="video-title">${video}</div>
+                </div>
+                <div class="play-button">
+                    <i class="fas fa-play"></i>
+                </div>
+            `;
+
+            videoItem.addEventListener('click', () => openVideoPlayer(videoUrl));
+            videoGrid.appendChild(videoItem);
+        });
+
+        function openVideoPlayer(videoUrl) {
+            mainVideo.src = videoUrl;
+            videoPlayer.style.display = 'flex';
+            mainVideo.play();
+            updatePlayPauseButton();
+            hideControlsAfterDelay();
+        }
+
+        function closeVideoPlayer() {
+            mainVideo.pause();
+            videoPlayer.style.display = 'none';
+        }
+
+        function togglePlay() {
+            if (mainVideo.paused) {
+                mainVideo.play();
+                hideControlsAfterDelay();
+            } else {
+                mainVideo.pause();
+            }
+            updatePlayPauseButton();
+        }
+
+        function updatePlayPauseButton() {
+            playPauseBtn.innerHTML = `<i class="fas fa-${mainVideo.paused ? 'play' : 'pause'}"></i>`;
+        }
+
+        function seekForward() {
+            mainVideo.currentTime = Math.min(mainVideo.currentTime + 10, mainVideo.duration);
+        }
+
+        function seekBackward() {
+            mainVideo.currentTime = Math.max(mainVideo.currentTime - 10, 0);
+        }
+
+        mainVideo.addEventListener('timeupdate', () => {
+            const percentage = (mainVideo.currentTime / mainVideo.duration) * 100;
+            progress.style.width = percentage + '%';
+            currentTimeEl.textContent = formatTime(mainVideo.currentTime);
+        });
+
+        mainVideo.addEventListener('loadedmetadata', () => {
+            durationEl.textContent = formatTime(mainVideo.duration);
+        });
+
+        progressBar.addEventListener('click', (e) => {
+            const rect = progressBar.getBoundingClientRect();
+            const pos = (e.clientX - rect.left) / progressBar.offsetWidth;
+            mainVideo.currentTime = pos * mainVideo.duration;
+        });
+
+        function shareVideo() {
+            const videoUrl = mainVideo.src;
+            const shareText = `شاهد هذا الفيديو: ${videoUrl}`;
+            const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(videoUrl)}&text=${encodeURIComponent(shareText)}`;
+            
+            window.open(telegramUrl, '_blank');
+        }
+
+        function hideControlsAfterDelay() {
+            videoControls.style.opacity = '1';
+            setTimeout(() => {
+                videoControls.style.opacity = '0';
+            }, 3000); // تختفي بعد 3 ثوانٍ
+        }
+
+        videoPlayer.addEventListener('click', () => {
+            videoControls.style.opacity = (videoControls.style.opacity === '1' ? '0' : '1');
+            if (videoControls.style.opacity === '1') {
+                hideControlsAfterDelay();
+            }
+        });
+    </script>
 </body>
 </html>
